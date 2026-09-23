@@ -2,6 +2,8 @@
 
 #include "include/CcpStatistics.h"
 
+#include <cmath>
+
 #include "CcpTelemetry.h"
 
 #if CCP_TELEMETRY_ENABLED
