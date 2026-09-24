@@ -797,12 +797,15 @@ bool CcpGetProcessMemoryInfo( CcpProcessMemoryInfo& result )
 		return true;
 	}
 #elif defined(__linux__)
-	// VmRSS/VmSize are reported in kB in /proc/self/status.
+	// Values in /proc/self/status are reported in kB. pageFileUsage mirrors Windows' private commit and
+	// macOS' phys_footprint: the process's anonymous memory, resident or swapped out (not VmSize, which
+	// counts every mapping including shared libraries and reserved address space).
 	FILE* file = fopen( "/proc/self/status", "r" );
 	if( file )
 	{
 		size_t vmRss = 0;
-		size_t vmSize = 0;
+		size_t rssAnon = 0;
+		size_t vmSwap = 0;
 		char line[256];
 		while( fgets( line, sizeof( line ), file ) )
 		{
@@ -810,14 +813,18 @@ bool CcpGetProcessMemoryInfo( CcpProcessMemoryInfo& result )
 			{
 				continue;
 			}
-			if( sscanf( line, "VmSize: %zu", &vmSize ) == 1 )
+			if( sscanf( line, "RssAnon: %zu", &rssAnon ) == 1 )
+			{
+				continue;
+			}
+			if( sscanf( line, "VmSwap: %zu", &vmSwap ) == 1 )
 			{
 				continue;
 			}
 		}
 		fclose( file );
 		result.workingSetSize = vmRss * 1024;
-		result.pageFileUsage = vmSize * 1024;
+		result.pageFileUsage = ( rssAnon + vmSwap ) * 1024;
 
 		rusage usage;
 		if( getrusage( RUSAGE_SELF, &usage ) == 0 )
